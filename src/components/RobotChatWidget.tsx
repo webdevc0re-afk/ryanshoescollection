@@ -20,15 +20,23 @@ type AudienceVibe = 'kids' | 'adult';
 const QUICK_PROMPTS: Record<AudienceVibe, string[]> = {
   kids: [
     'Best sneakers for ages 10 to 17?',
-    'What cool colors do you have in stock?',
-    'How do I order with COD or GCash?',
+    'Unsay nindot nga sapatos para sa 10–17 yrs old?',
+    'Anong magandang sapatos pang-school o sports?',
+    'Asa dapit inyong store ug unsa contact number?',
+    'Pwede ba COD, GCash, o Maya sa pagbayad?',
+    'What cool colors & sizes are in stock?',
   ],
   adult: [
-    'Most comfortable shoes for ages 40 to 60?',
-    'Which shoes qualify for free shipping?',
-    'How do GCash, Maya, and COD payments work?',
+    'Where is your store located & contact number?',
+    'Unsay available nga komportableng sapatos (40–60 yrs old)?',
+    'Magkano shipping fee at may free shipping ba?',
+    'How do COD, GCash, and Maya payments work?',
+    'Asa sa Minglanilla, Cebu mo ug pwede ba mag-contact?',
+    'Paano i-track ang order ko sa RYAN\'S SHOES COLLECTION?',
   ],
 };
+
+const STORE_CONTACT_LINE = 'Minglanilla, Cebu · Contact: 09153824116';
 
 const RobotMascotSvg: React.FC<{ vibe: AudienceVibe; thinking?: boolean }> = ({
   vibe,
@@ -107,7 +115,7 @@ export const RobotChatWidget: React.FC<RobotChatWidgetProps> = ({
       id: 'welcome-1',
       role: 'model',
       vibe: 'adult',
-      text: "Hi there! I'm RyanBot, your 24/7 AI shoe assistant at RYAN'S SHOES COLLECTION. No human staff online right now? No problem — ask me about shoe sizes (ages 10 to 60), comfort picks, stock, shipping fees, or COD, GCash & Maya!",
+      text: "Maayong adlaw! Magandang araw! Hi there!\n\nI'm RyanBot, your friendly 24/7 shoe buddy at RYAN'S SHOES COLLECTION (Minglanilla, Cebu · Contact: 09153824116). Feel free to chat with me in English, Cebuano, or Tagalog! Ask about shoe sizes (ages 10 to 60), stock, prices, shipping, or COD, GCash & Maya — or tap a question below!",
     },
   ]);
 
@@ -205,8 +213,8 @@ export const RobotChatWidget: React.FC<RobotChatWidgetProps> = ({
         vibe,
         text:
           vibe === 'kids'
-            ? "Hey champ! I'm RyanBot, your friendly sneaker buddy at RYAN'S SHOES COLLECTION! Looking for awesome shoes for school, sports, or hanging out? Ask away!"
-            : "Hello! I'm RyanBot, your 24/7 footwear concierge at RYAN'S SHOES COLLECTION. Ask me about sizes for ages 10 to 60, comfort walking pairs, stock availability, or COD, GCash & Maya!",
+            ? "Hey champ! Maayong adlaw! Kumusta! I'm RyanBot, your friendly sneaker buddy at RYAN'S SHOES COLLECTION (Minglanilla, Cebu · 09153824116). Chat with me in English, Cebuano, or Tagalog about awesome shoes for school, sports, or hanging out!"
+            : "Maayong adlaw! Magandang araw! I'm RyanBot, your 24/7 footwear concierge at RYAN'S SHOES COLLECTION (Minglanilla, Cebu · Contact: 09153824116). Ask me in English, Cebuano, or Tagalog about sizes (ages 10–60), comfort picks, stock, shipping, or COD, GCash & Maya!",
       },
     ]);
   };
@@ -243,7 +251,7 @@ export const RobotChatWidget: React.FC<RobotChatWidgetProps> = ({
                   Ask RyanBot AI
                 </p>
                 <p className="text-[11px] text-white/85 leading-tight whitespace-nowrap">
-                  24/7 Shoe Help
+                  EN · Cebuano · Tagalog
                 </p>
               </div>
             </motion.button>
@@ -278,10 +286,10 @@ export const RobotChatWidget: React.FC<RobotChatWidgetProps> = ({
                   </div>
                   <div className="min-w-0">
                     <h2 className="font-display text-sm font-bold truncate">
-                      RyanBot · AI Shoe Concierge
+                      RyanBot · RYAN'S SHOES COLLECTION
                     </h2>
                     <p className="text-[11px] text-white/90 truncate">
-                      24/7 Inquiry Support · RYAN'S SHOES COLLECTION
+                      {STORE_CONTACT_LINE}
                     </p>
                   </div>
                 </div>
@@ -421,6 +429,31 @@ export const RobotChatWidget: React.FC<RobotChatWidgetProps> = ({
                 </motion.div>
               )}
 
+              {messages.length === 1 && !loading && (
+                <div className="pt-1 space-y-1.5">
+                  <p className="text-[11px] font-medium text-zinc-500 px-1">
+                    Possible questions (English · Cebuano · Tagalog):
+                  </p>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {QUICK_PROMPTS[vibe].map((q) => (
+                      <button
+                        key={`intro-${q}`}
+                        type="button"
+                        onClick={() => sendMessage(q)}
+                        className={`text-left px-3 py-2 rounded-xl text-xs font-medium border transition-colors flex items-center justify-between gap-2 ${
+                          isKids
+                            ? 'bg-white border-sky-200 text-sky-900 hover:bg-sky-50'
+                            : 'bg-white border-teal-200 text-zinc-800 hover:bg-teal-50/70'
+                        }`}
+                      >
+                        <span>{q}</span>
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0 opacity-60" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {errorMsg && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
                   {errorMsg}
@@ -465,8 +498,8 @@ export const RobotChatWidget: React.FC<RobotChatWidgetProps> = ({
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
                   isKids
-                    ? 'Ask RyanBot about cool sneakers...'
-                    : 'Ask about sizes, comfort, COD, GCash...'
+                    ? 'Ask in English, Cebuano, or Tagalog...'
+                    : 'Type in English, Cebuano, or Tagalog...'
                 }
                 disabled={loading}
                 className="flex-1 px-3.5 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-blue-600"

@@ -34,7 +34,9 @@ service cloud.firestore {
 
     function isAdmin() {
       return isVerified() && (
-        request.auth.token.email == 'clonekey7@gmail.com' ||
+        ('email' in request.auth.token &&
+          request.auth.token.email is string &&
+          request.auth.token.email.lower() == 'clonekey7@gmail.com') ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -53,14 +55,14 @@ service cloud.firestore {
           'newArrival', 'bestSeller', 'active', 'createdAt', 'updatedAt'
         ]) &&
         isValidId(data.id) &&
-        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
-        data.brand is string && data.brand.size() >= 2 && data.brand.size() <= 80 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.brand is string && data.brand.size() >= 1 && data.brand.size() <= 80 &&
         data.category in ['Running', 'Court & Casual', 'Loafers & Dress', 'Trail & Outdoor', 'Kids & Youth', 'Comfort Walking'] &&
         data.ageGroup in ['Kids & Youth (10-17)', 'Adults (18-45)', 'Mature Comfort (46-60)', 'All Ages (10-60)'] &&
-        data.description is string && data.description.size() >= 5 && data.description.size() <= 1500 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 1500 &&
         data.price is number && data.price > 0 && data.price <= 500000 &&
         data.discountPercent is number && data.discountPercent >= 0 && data.discountPercent <= 90 &&
-        data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 1000 &&
+        data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 2000 &&
         (!('driveFileId' in data) || (data.driveFileId is string && data.driveFileId.size() <= 256)) &&
         data.colors is list && data.colors.size() >= 1 && data.colors.size() <= 10 && data.colors[0] is string &&
         data.sizes is list && data.sizes.size() >= 1 && data.sizes.size() <= 20 && data.sizes[0] is string &&

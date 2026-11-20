@@ -6,8 +6,8 @@
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
-        "brand": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "brand": { "type": "string", "minLength": 1, "maxLength": 80 },
         "category": {
           "type": "string",
           "enum": ["Running", "Court & Casual", "Loafers & Dress", "Trail & Outdoor", "Kids & Youth", "Comfort Walking"]
@@ -16,10 +16,10 @@
           "type": "string",
           "enum": ["Kids & Youth (10-17)", "Adults (18-45)", "Mature Comfort (46-60)", "All Ages (10-60)"]
         },
-        "description": { "type": "string", "minLength": 5, "maxLength": 1500 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1500 },
         "price": { "type": "number" },
         "discountPercent": { "type": "number" },
-        "imageUrl": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "imageUrl": { "type": "string", "minLength": 1, "maxLength": 2000 },
         "driveFileId": { "type": "string", "maxLength": 256 },
         "colors": { "type": "array" },
         "sizes": { "type": "array" },

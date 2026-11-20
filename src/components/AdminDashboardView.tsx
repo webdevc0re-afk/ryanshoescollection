@@ -141,6 +141,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [pBestSeller, setPBestSeller] = useState(false);
   const [pActive, setPActive] = useState(true);
   const [savingProduct, setSavingProduct] = useState(false);
+  const [productModalError, setProductModalError] = useState('');
 
   // Drive Upload & Picker
   const [uploadingDrive, setUploadingDrive] = useState(false);
@@ -222,6 +223,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     setPNewArrival(true);
     setPBestSeller(false);
     setPActive(true);
+    setProductModalError('');
     setProductModalOpen(true);
   };
 
@@ -245,6 +247,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     setPNewArrival(Boolean(prod.newArrival));
     setPBestSeller(Boolean(prod.bestSeller));
     setPActive(prod.active !== false);
+    setProductModalError('');
     setProductModalOpen(true);
   };
 
@@ -280,38 +283,78 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     e.preventDefault();
     setSavingProduct(true);
     setBannerMessage(null);
+    setProductModalError('');
     try {
+      const cleanName = pName.trim();
+      const cleanBrand = pBrand.trim();
+      const cleanDescription = pDescription.trim();
+      const cleanImageUrl = pImageUrl.trim();
+      const parsedPrice = Number(pPrice);
+      const parsedDiscount = Number(pDiscount || 0);
+      const parsedThreshold = Math.floor(Number(pLowThreshold || 0));
+
+      if (!cleanName) {
+        throw new Error('Product name is required (at least 1 non-space character).');
+      }
+      if (!cleanBrand) {
+        throw new Error('Brand name is required (at least 1 non-space character).');
+      }
+      if (!cleanDescription) {
+        throw new Error('Product description is required (at least 1 non-space character).');
+      }
+      if (!Number.isFinite(parsedPrice) || parsedPrice <= 0 || parsedPrice > 500000) {
+        throw new Error('Price must be between ₱1 and ₱500,000.');
+      }
+      if (!Number.isFinite(parsedDiscount) || parsedDiscount < 0 || parsedDiscount > 90) {
+        throw new Error('Discount must be between 0% and 90%.');
+      }
+      if (!Number.isFinite(parsedThreshold) || parsedThreshold < 0 || parsedThreshold > 1000) {
+        throw new Error('Low-stock threshold must be between 0 and 1,000.');
+      }
+      if (!cleanImageUrl) {
+        throw new Error('Product image URL is required.');
+      }
+      if (cleanImageUrl.length > 2000) {
+        throw new Error('Image URL is too long (max 2,000 characters). Please upload your image to Google Drive instead of pasting raw image data.');
+      }
+
       const { sizes, sizeStock, stock } = parseSizeStock(pSizeStockText);
+      if (stock > 100000) {
+        throw new Error('Total stock across all sizes cannot exceed 100,000 pairs.');
+      }
+
       const colors = pColorsText
         .split(',')
         .map((c) => c.trim())
         .filter(Boolean);
 
+      const slug = cleanName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 40);
+
       const generatedId =
         editingProduct?.id ||
-        `rsc-${pName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '')
-          .slice(0, 40)}-${Date.now().toString().slice(-4)}`;
+        `rsc-${slug || 'shoe'}-${Date.now().toString().slice(-4)}`;
 
       await saveProduct(
         {
           id: generatedId,
-          name: pName.trim(),
-          brand: pBrand.trim(),
+          name: cleanName,
+          brand: cleanBrand,
           category: pCategory,
           ageGroup: pAgeGroup,
-          description: pDescription.trim(),
-          price: Number(pPrice),
-          discountPercent: Number(pDiscount || 0),
-          imageUrl: pImageUrl.trim(),
+          description: cleanDescription,
+          price: parsedPrice,
+          discountPercent: parsedDiscount,
+          imageUrl: cleanImageUrl,
           driveFileId: pDriveFileId.trim() || undefined,
           colors: colors.length > 0 ? colors : ['Classic Black'],
           sizes,
           sizeStock,
           stock,
-          lowStockThreshold: Number(pLowThreshold || 5),
+          lowStockThreshold: parsedThreshold,
           featured: pFeatured,
           newArrival: pNewArrival,
           bestSeller: pBestSeller,
@@ -324,12 +367,14 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       setProductModalOpen(false);
       setBannerMessage({
         type: 'success',
-        text: editingProduct ? `Updated "${pName.trim()}" in Firestore.` : `Added "${pName.trim()}" to catalog.`,
+        text: editingProduct ? `Updated "${cleanName}" in Firestore.` : `Added "${cleanName}" to catalog.`,
       });
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save product.';
+      setProductModalError(msg);
       setBannerMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : 'Failed to save product.',
+        text: msg,
       });
     } finally {
       setSavingProduct(false);
@@ -385,17 +430,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const token = workspaceToken || getWorkspaceAccessToken();
-    if (!token) {
-      setBannerMessage({
-        type: 'error',
-        text: 'Connect Google Drive & Sheets first to upload product photos directly to your Drive folder.',
-      });
-      return;
-    }
-
+    setProductModalError('');
     setUploadingDrive(true);
     try {
+      let token = workspaceToken || getWorkspaceAccessToken();
+      if (!token) {
+        const connected = await connectGoogleWorkspace();
+        token = connected.accessToken;
+        setWorkspaceToken(token);
+      }
+
       const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result || ''));
@@ -427,9 +471,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         text: `Uploaded "${file.name}" to Google Drive folder.`,
       });
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed.';
+      setProductModalError(msg);
       setBannerMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : 'Upload failed.',
+        text: msg,
       });
     } finally {
       setUploadingDrive(false);
@@ -1412,9 +1458,15 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           aria-modal="true"
         >
           <div className="bg-white border border-zinc-200 rounded-xl max-w-2xl w-full p-6 md:p-8 my-auto max-h-[90vh] overflow-y-auto">
-            <h2 className="font-display text-xl font-bold text-zinc-950 mb-5">
+            <h2 className="font-display text-xl font-bold text-zinc-950 mb-4">
               {editingProduct ? `Edit Shoe: ${editingProduct.name}` : 'Add New Shoe Product'}
             </h2>
+
+            {productModalError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 break-words">
+                {productModalError}
+              </div>
+            )}
 
             <form onSubmit={handleSaveProduct} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

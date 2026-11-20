@@ -364,7 +364,7 @@ function StoreApp() {
               RYAN'S SHOES COLLECTION
             </p>
             <p className="text-xs text-zinc-500 mt-1">
-              Footwear for ages 10 to 60 · Nationwide Philippines shipping · COD, GCash & Maya
+              Minglanilla, Cebu · Contact: 09153824116 · Ages 10 to 60 · COD, GCash & Maya
             </p>
           </div>
 

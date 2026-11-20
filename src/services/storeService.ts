@@ -30,17 +30,35 @@ export function sanitizeProductPayload(
   isNew: boolean,
   existingCreatedAt?: unknown
 ) {
-  const cleanId = input.id.replace(/[^a-zA-Z0-9_\-]/g, '-').slice(0, 128);
-  const colors = input.colors.map((c) => c.trim()).filter(Boolean).slice(0, 10);
-  const sizes = input.sizes.map((s) => s.trim()).filter(Boolean).slice(0, 20);
+  const cleanId = input.id.replace(/[^a-zA-Z0-9_\-]/g, '-').slice(0, 128) || `rsc-${Date.now()}`;
+  const colors = input.colors
+    .map((c) => c.trim().slice(0, 60))
+    .filter(Boolean)
+    .slice(0, 10);
+  const sizes = input.sizes
+    .map((s) => s.trim().slice(0, 30))
+    .filter(Boolean)
+    .slice(0, 20);
+  const safeSizes = sizes.length > 0 ? sizes : ['US 8'];
 
   const normalizedSizeStock: Record<string, number> = {};
   let computedStock = 0;
-  for (const size of sizes) {
-    const qty = Math.max(0, Math.floor(Number(input.sizeStock?.[size] ?? 0)));
+  for (const size of safeSizes) {
+    const rawQty = Number(input.sizeStock?.[size] ?? 0);
+    const qty = Number.isFinite(rawQty) ? Math.max(0, Math.min(100000, Math.floor(rawQty))) : 0;
     normalizedSizeStock[size] = qty;
     computedStock += qty;
   }
+  computedStock = Math.min(100000, computedStock);
+
+  const rawPrice = Number(input.price);
+  const safePrice = Number.isFinite(rawPrice) ? Math.max(1, Math.min(500000, rawPrice)) : 1;
+
+  const rawDiscount = Number(input.discountPercent || 0);
+  const safeDiscount = Number.isFinite(rawDiscount) ? Math.max(0, Math.min(90, rawDiscount)) : 0;
+
+  const rawThreshold = Number(input.lowStockThreshold ?? 5);
+  const safeThreshold = Number.isFinite(rawThreshold) ? Math.max(0, Math.min(1000, Math.floor(rawThreshold))) : 5;
 
   const base: Record<string, unknown> = {
     id: cleanId,
@@ -49,14 +67,14 @@ export function sanitizeProductPayload(
     category: input.category,
     ageGroup: input.ageGroup,
     description: input.description.trim().slice(0, 1500),
-    price: Math.max(1, Math.min(500000, Number(input.price))),
-    discountPercent: Math.max(0, Math.min(90, Number(input.discountPercent || 0))),
-    imageUrl: input.imageUrl.trim().slice(0, 1000),
+    price: safePrice,
+    discountPercent: safeDiscount,
+    imageUrl: input.imageUrl.trim().slice(0, 2000),
     colors: colors.length > 0 ? colors : ['Classic Black'],
-    sizes: sizes.length > 0 ? sizes : ['US 8'],
+    sizes: safeSizes,
     sizeStock: normalizedSizeStock,
     stock: computedStock,
-    lowStockThreshold: Math.max(0, Math.min(1000, Math.floor(Number(input.lowStockThreshold ?? 5)))),
+    lowStockThreshold: safeThreshold,
     featured: Boolean(input.featured),
     newArrival: Boolean(input.newArrival),
     bestSeller: Boolean(input.bestSeller),

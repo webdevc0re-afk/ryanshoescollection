@@ -110,19 +110,54 @@ export function clearWorkspaceAccessToken(): void {
   cachedWorkspaceAccessToken = null;
 }
 
+function formatAuthError(err: unknown): Error {
+  const code =
+    typeof err === 'object' && err !== null && 'code' in err
+      ? String((err as { code?: unknown }).code)
+      : '';
+  const message = err instanceof Error ? err.message : String(err);
+
+  if (code === 'auth/popup-blocked' || message.includes('auth/popup-blocked')) {
+    return new Error(
+      'Your browser blocked the Google Sign-In popup. Please allow popups for this site in your browser address bar, then click Sign in again.'
+    );
+  }
+  if (code === 'auth/popup-closed-by-user' || message.includes('auth/popup-closed-by-user')) {
+    return new Error('Google Sign-In was closed before completion. Please try again.');
+  }
+  if (code === 'auth/cancelled-popup-request' || message.includes('auth/cancelled-popup-request')) {
+    return new Error('A sign-in window is already in progress. Please check open browser windows or try again.');
+  }
+  if (code === 'auth/unauthorized-domain' || message.includes('auth/unauthorized-domain')) {
+    const host = typeof window !== 'undefined' ? window.location.hostname : 'this domain';
+    return new Error(
+      `Domain "${host}" is not authorized in Firebase Authentication. Add it in Firebase Console → Authentication → Settings → Authorized domains.`
+    );
+  }
+  return err instanceof Error ? err : new Error(message || 'Google Sign-In failed.');
+}
+
 export async function signInWithGoogleCustomer(): Promise<User> {
-  const result = await signInWithPopup(auth, standardGoogleProvider);
-  return result.user;
+  try {
+    const result = await signInWithPopup(auth, standardGoogleProvider);
+    return result.user;
+  } catch (err) {
+    throw formatAuthError(err);
+  }
 }
 
 export async function connectGoogleWorkspace(): Promise<{ user: User; accessToken: string }> {
-  const result = await signInWithPopup(auth, workspaceGoogleProvider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  if (!credential?.accessToken) {
-    throw new Error('Could not obtain Google Workspace access token. Please allow Drive & Sheets permissions.');
+  try {
+    const result = await signInWithPopup(auth, workspaceGoogleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (!credential?.accessToken) {
+      throw new Error('Could not obtain Google Workspace access token. Please allow Drive & Sheets permissions.');
+    }
+    cachedWorkspaceAccessToken = credential.accessToken;
+    return { user: result.user, accessToken: credential.accessToken };
+  } catch (err) {
+    throw formatAuthError(err);
   }
-  cachedWorkspaceAccessToken = credential.accessToken;
-  return { user: result.user, accessToken: credential.accessToken };
 }
 
 export async function signOutStoreUser(): Promise<void> {

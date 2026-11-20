@@ -1,9 +1,9 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 dotenv.config();
@@ -11,7 +11,7 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const DEFAULT_SHEETS_ID = process.env.VITE_GOOGLE_SHEETS_ID || '1jZ_CIw6GbfTiwyFa2Gqx0tZvbMWX_xMv46yq08iQhg0';
 const DEFAULT_DRIVE_FOLDER_ID = process.env.VITE_GOOGLE_DRIVE_FOLDER_ID || '1xHTKf5DgUmOnRMnItRlGA9yUyiprmBNw';
 
@@ -638,6 +638,7 @@ Rules:
 
   // Dev Vite middleware or Production static assets
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

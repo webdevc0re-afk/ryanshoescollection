@@ -120,6 +120,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [bannerMessage, setBannerMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [workspaceToken, setWorkspaceToken] = useState<string | null>(() => getWorkspaceAccessToken());
   const [connectingWorkspace, setConnectingWorkspace] = useState(false);
+  const [adminAuthBusy, setAdminAuthBusy] = useState(false);
+  const [adminAuthError, setAdminAuthError] = useState('');
 
   // Product Form Modal state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -430,16 +432,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const token = workspaceToken || getWorkspaceAccessToken();
+    if (!token) {
+      setProductModalError('Please click "Connect Google Drive" first before selecting an image file.');
+      e.target.value = '';
+      return;
+    }
+
     setProductModalError('');
     setUploadingDrive(true);
     try {
-      let token = workspaceToken || getWorkspaceAccessToken();
-      if (!token) {
-        const connected = await connectGoogleWorkspace();
-        token = connected.accessToken;
-        setWorkspaceToken(token);
-      }
-
       const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result || ''));
@@ -663,8 +665,27 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           <p className="text-sm text-zinc-600 mb-6">
             Sign in with your authorized store administrator Google account ({BOOTSTRAP_ADMIN_EMAIL}) to manage products, verify payments, confirm orders, and sync Google Sheets backups.
           </p>
-          <div className="flex justify-center">
-            <GoogleSignInButton onClick={onSignIn} label="Sign in with Google Admin" />
+          <div className="flex flex-col items-center gap-4">
+            <GoogleSignInButton
+              onClick={async () => {
+                setAdminAuthBusy(true);
+                setAdminAuthError('');
+                try {
+                  await onSignIn();
+                } catch (err) {
+                  setAdminAuthError(err instanceof Error ? err.message : 'Google Sign-In failed.');
+                } finally {
+                  setAdminAuthBusy(false);
+                }
+              }}
+              disabled={adminAuthBusy}
+              label="Sign in with Google Admin"
+            />
+            {adminAuthError && (
+              <div className="w-full p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 text-left">
+                {adminAuthError}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1555,17 +1576,42 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   <label className="text-xs font-medium text-zinc-800">
                     Product Photography (Google Drive or Studio Preset)
                   </label>
-                  <label className="px-3 py-1.5 bg-white border border-zinc-200 rounded-md text-xs font-medium text-zinc-800 hover:border-zinc-950 cursor-pointer inline-flex items-center gap-1.5">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{uploadingDrive ? 'Uploading to Drive...' : 'Upload to Google Drive'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleDriveFileUpload}
-                      disabled={uploadingDrive}
-                      className="hidden"
-                    />
-                  </label>
+                  {!(workspaceToken || getWorkspaceAccessToken()) ? (
+                    <button
+                      type="button"
+                      disabled={connectingWorkspace}
+                      onClick={async () => {
+                        setConnectingWorkspace(true);
+                        setProductModalError('');
+                        try {
+                          const { accessToken } = await connectGoogleWorkspace();
+                          setWorkspaceToken(accessToken);
+                        } catch (err) {
+                          setProductModalError(
+                            err instanceof Error ? err.message : 'Google Drive connection failed.'
+                          );
+                        } finally {
+                          setConnectingWorkspace(false);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-white border border-zinc-200 rounded-md text-xs font-medium text-zinc-800 hover:border-zinc-950 disabled:opacity-50 inline-flex items-center gap-1.5"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{connectingWorkspace ? 'Connecting...' : 'Connect Google Drive'}</span>
+                    </button>
+                  ) : (
+                    <label className="px-3 py-1.5 bg-white border border-zinc-200 rounded-md text-xs font-medium text-zinc-800 hover:border-zinc-950 cursor-pointer inline-flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{uploadingDrive ? 'Uploading to Drive...' : 'Upload to Google Drive'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleDriveFileUpload}
+                        disabled={uploadingDrive}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
                 </div>
 
                 <input

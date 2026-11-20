@@ -129,18 +129,26 @@ export const CustomerAccountView: React.FC<CustomerAccountViewProps> = ({
           <p className="text-sm text-zinc-600 mb-6">
             Sign in with Google to register your customer profile, save delivery addresses across the Philippines, and view your past shoe orders.
           </p>
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-4">
             <GoogleSignInButton
               onClick={async () => {
                 setAuthBusy(true);
+                setErrorMsg('');
                 try {
                   await onSignIn();
+                } catch (err) {
+                  setErrorMsg(err instanceof Error ? err.message : 'Google Sign-In failed.');
                 } finally {
                   setAuthBusy(false);
                 }
               }}
               disabled={authBusy}
             />
+            {errorMsg && (
+              <div className="w-full p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 text-left">
+                {errorMsg}
+              </div>
+            )}
           </div>
         </div>
       </div>

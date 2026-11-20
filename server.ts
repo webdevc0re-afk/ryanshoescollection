@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 dotenv.config();
 
@@ -11,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = 3000;
-const DEFAULT_SHEETS_ID = process.env.VITE_GOOGLE_SHEETS_ID || '1xLu9-_zAnCBuRBrostl2nBR01NWRXipKxxNl2560DME';
+const DEFAULT_SHEETS_ID = process.env.VITE_GOOGLE_SHEETS_ID || '1jZ_CIw6GbfTiwyFa2Gqx0tZvbMWX_xMv46yq08iQhg0';
 const DEFAULT_DRIVE_FOLDER_ID = process.env.VITE_GOOGLE_DRIVE_FOLDER_ID || '1xHTKf5DgUmOnRMnItRlGA9yUyiprmBNw';
 
 async function startServer() {
@@ -516,6 +517,112 @@ async function startServer() {
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'Google Sheets sync failed.' });
+    }
+  });
+
+  // AI Robot ChatBot Inquiries (Server-side Gemini API)
+  app.post('/api/chat', async (req: Request, res: Response) => {
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
+      res.status(503).json({
+        error: 'Gemini API key is not configured in Settings > Secrets yet. Please add GEMINI_API_KEY to activate RyanBot.',
+      });
+      return;
+    }
+
+    const { messages = [], audienceMode = 'adult', catalogContext = [] } = req.body || {};
+    if (!Array.isArray(messages) || messages.length === 0) {
+      res.status(400).json({ error: 'Conversation messages are required.' });
+      return;
+    }
+
+    try {
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+      const catalogSummary = Array.isArray(catalogContext) && catalogContext.length > 0
+        ? catalogContext
+            .slice(0, 30)
+            .map((p: Record<string, unknown>) => {
+              const sizes = Array.isArray(p.sizes) ? p.sizes.join(', ') : '';
+              const colors = Array.isArray(p.colors) ? p.colors.join(', ') : '';
+              return `- ${String(p.name)} (${String(p.brand)}) | Category: ${String(p.category)} | Ages: ${String(p.ageGroup)} | Price: ₱${Number(p.effectivePrice || p.price)} (Discount: ${Number(p.discountPercent || 0)}%) | Total Stock: ${Number(p.stock || 0)} | Sizes: [${sizes}] | Colors: [${colors}]`;
+            })
+            .join('\n')
+        : 'Catalog is loading.';
+
+      const toneDirective =
+        audienceMode === 'kids'
+          ? 'TONE FOR KIDS & TEENS (10-17): Extra upbeat, encouraging, playful, clear, and easy to read! Celebrate sports, school, and everyday adventures with positive energy.'
+          : 'TONE FOR ADULTS & FAMILIES (18-60): Warm, welcoming, upbeat, helpful, and reassuring. Highlight comfort, value in PHP (₱), durability, and easy Philippines delivery.';
+
+      const systemInstruction = `You are RyanBot, the friendly AI Robot Assistant for RYAN'S SHOES COLLECTION, helping shoppers 24/7 whenever human store staff are away.
+${toneDirective}
+
+Store Facts for RYAN'S SHOES COLLECTION (Philippines):
+- Target Ages: 10 to 60 years old (Junior US 3Y up to Adult US 12).
+- Shipping Regions & Fees: Metro Manila ₱85, Luzon Provincial ₱135, Visayas ₱175, Mindanao ₱195. FREE nationwide shipping on orders ₱3,500 and above!
+- Payment Methods: Cash on Delivery (COD), GCash, and Maya. For GCash & Maya, customers transfer to the store merchant number shown at checkout and submit their reference number for quick verification (or pay through official gateway if enabled).
+- Order Tracking: Customers receive a tracking code like RSC-2026-XXXXXX and can check status anytime on the Track Order page (Pending -> Confirmed -> Processing -> Shipped -> Delivered).
+- Live Footwear Inventory:
+${catalogSummary}
+
+Rules:
+- Keep answers concise (2 to 4 short paragraphs or neat bullet points), positive, and accurate to the live inventory above.
+- When recommending shoes, use the exact product names from the inventory list so the shopper can open them directly.
+- Never invent fake prices, fake stock numbers, or fake order statuses. If the customer asks about a specific personal order status, kindly guide them to the Track Order tab with their RSC-YYYY-XXXXXX code.`;
+
+      const contents = messages
+        .slice(-12)
+        .map((m: { role?: string; text?: string }) => ({
+          role: m.role === 'model' ? 'model' : 'user',
+          parts: [{ text: String(m.text || '').slice(0, 2000) }],
+        }));
+
+      let response: Awaited<ReturnType<typeof ai.models.generateContent>> | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          response = await ai.models.generateContent({
+            model: 'gemini-4-hydrogen',
+            contents,
+            config: {
+              systemInstruction,
+              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            },
+          });
+          break;
+        } catch (err) {
+          const errStr = err instanceof Error ? err.message : String(err);
+          const isTransient = errStr.includes('503') || errStr.includes('UNAVAILABLE') || errStr.includes('429');
+          if (!isTransient || attempt === 2) throw err;
+          await new Promise((resolve) => setTimeout(resolve, 700 * Math.pow(2, attempt)));
+        }
+      }
+
+      const replyText = response?.text;
+      if (!replyText) {
+        res.status(502).json({ error: 'RyanBot did not receive a text response. Please try again.' });
+        return;
+      }
+
+      res.json({ reply: replyText });
+    } catch (err: unknown) {
+      let friendlyMsg = err instanceof Error ? err.message : 'Gemini AI service error.';
+      try {
+        const parsed = JSON.parse(friendlyMsg);
+        if (parsed?.error?.message) {
+          friendlyMsg = parsed.error.message;
+        }
+      } catch {
+        // Keep raw message if not JSON
+      }
+      res.status(502).json({ error: friendlyMsg });
     }
   });
 

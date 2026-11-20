@@ -25,6 +25,7 @@ import { CheckoutView } from './components/CheckoutView';
 import { TrackOrderView } from './components/TrackOrderView';
 import { CustomerAccountView } from './components/CustomerAccountView';
 import { AdminDashboardView } from './components/AdminDashboardView';
+import { RobotChatWidget } from './components/RobotChatWidget';
 
 type AppRoute = 'shop' | 'checkout' | 'track' | 'account' | 'admin';
 
@@ -402,6 +403,11 @@ function StoreApp() {
           setCartOpen(false);
           handleNavigate('checkout');
         }}
+      />
+
+      <RobotChatWidget
+        products={displayProducts}
+        onSelectProduct={(prod) => setSelectedProduct(prod)}
       />
     </div>
   );

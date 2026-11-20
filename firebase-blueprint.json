@@ -1,0 +1,218 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Footwear item in Ryan's Shoes Collection catalog with size-level inventory and pricing.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "brand": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "category": {
+          "type": "string",
+          "enum": ["Running", "Court & Casual", "Loafers & Dress", "Trail & Outdoor", "Kids & Youth", "Comfort Walking"]
+        },
+        "ageGroup": {
+          "type": "string",
+          "enum": ["Kids & Youth (10-17)", "Adults (18-45)", "Mature Comfort (46-60)", "All Ages (10-60)"]
+        },
+        "description": { "type": "string", "minLength": 5, "maxLength": 1500 },
+        "price": { "type": "number" },
+        "discountPercent": { "type": "number" },
+        "imageUrl": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "driveFileId": { "type": "string", "maxLength": 256 },
+        "colors": { "type": "array" },
+        "sizes": { "type": "array" },
+        "sizeStock": { "type": "object" },
+        "stock": { "type": "number" },
+        "lowStockThreshold": { "type": "number" },
+        "featured": { "type": "boolean" },
+        "newArrival": { "type": "boolean" },
+        "bestSeller": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "name",
+        "brand",
+        "category",
+        "ageGroup",
+        "description",
+        "price",
+        "discountPercent",
+        "imageUrl",
+        "colors",
+        "sizes",
+        "sizeStock",
+        "stock",
+        "lowStockThreshold",
+        "featured",
+        "newArrival",
+        "bestSeller",
+        "active",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Registered customer profile with delivery address and contact details.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 200 },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "address": { "type": "string", "maxLength": 300 },
+        "city": { "type": "string", "maxLength": 100 },
+        "province": { "type": "string", "maxLength": 100 },
+        "postalCode": { "type": "string", "maxLength": 20 },
+        "preferredAgeGroup": { "type": "string", "maxLength": 60 },
+        "role": { "type": "string", "enum": ["customer"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "email",
+        "fullName",
+        "phone",
+        "address",
+        "city",
+        "province",
+        "postalCode",
+        "role",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized store administrator record.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer footwear order with Philippine delivery details, payment verification, and lifecycle tracking.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "trackingCode": { "type": "string", "maxLength": 40, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "customerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "customerEmail": { "type": "string", "maxLength": 200 },
+        "customerName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "contactNumber": { "type": "string", "minLength": 7, "maxLength": 30 },
+        "deliveryAddress": { "type": "string", "minLength": 5, "maxLength": 400 },
+        "region": { "type": "string", "maxLength": 80 },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "shippingFee": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["COD", "GCash", "Maya"] },
+        "paymentReference": { "type": "string", "maxLength": 120 },
+        "paymentSenderNumber": { "type": "string", "maxLength": 30 },
+        "paymentStatus": {
+          "type": "string",
+          "enum": ["Pending COD Collection", "Awaiting Verification", "Verified & Paid", "Payment Rejected", "Refunded"]
+        },
+        "orderStatus": {
+          "type": "string",
+          "enum": ["Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"]
+        },
+        "stockDeducted": { "type": "boolean" },
+        "trackingNotes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "trackingCode",
+        "customerId",
+        "customerEmail",
+        "customerName",
+        "contactNumber",
+        "deliveryAddress",
+        "region",
+        "items",
+        "subtotal",
+        "shippingFee",
+        "totalAmount",
+        "paymentMethod",
+        "paymentReference",
+        "paymentSenderNumber",
+        "paymentStatus",
+        "orderStatus",
+        "stockDeducted",
+        "trackingNotes",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderTracking": {
+      "title": "OrderTracking",
+      "description": "Non-PII public lookup summary keyed by trackingCode for status checking.",
+      "type": "object",
+      "properties": {
+        "trackingCode": { "type": "string", "maxLength": 40, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "customerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderStatus": {
+          "type": "string",
+          "enum": ["Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"]
+        },
+        "paymentStatus": {
+          "type": "string",
+          "enum": ["Pending COD Collection", "Awaiting Verification", "Verified & Paid", "Payment Rejected", "Refunded"]
+        },
+        "paymentMethod": { "type": "string", "enum": ["COD", "GCash", "Maya"] },
+        "itemCount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "trackingNotes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "trackingCode",
+        "customerId",
+        "orderStatus",
+        "paymentStatus",
+        "paymentMethod",
+        "itemCount",
+        "totalAmount",
+        "trackingNotes",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Storefront shoe products and stock levels"
+    },
+    "/customers/{userId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Private customer profiles containing PII"
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Authorized store administrator registry"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer orders with shipping PII and payment verification"
+    },
+    "/orderTracking/{trackingCode}": {
+      "schema": { "$ref": "#/entities/OrderTracking" },
+      "description": "Non-PII order status lookup keyed by trackingCode"
+    }
+  }
+}

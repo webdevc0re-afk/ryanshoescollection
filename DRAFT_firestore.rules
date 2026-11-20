@@ -1,0 +1,304 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'clonekey7@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'brand', 'category', 'ageGroup', 'description',
+          'price', 'discountPercent', 'imageUrl', 'colors', 'sizes',
+          'sizeStock', 'stock', 'lowStockThreshold', 'featured',
+          'newArrival', 'bestSeller', 'active', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'name', 'brand', 'category', 'ageGroup', 'description',
+          'price', 'discountPercent', 'imageUrl', 'driveFileId', 'colors',
+          'sizes', 'sizeStock', 'stock', 'lowStockThreshold', 'featured',
+          'newArrival', 'bestSeller', 'active', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+        data.brand is string && data.brand.size() >= 2 && data.brand.size() <= 80 &&
+        data.category in ['Running', 'Court & Casual', 'Loafers & Dress', 'Trail & Outdoor', 'Kids & Youth', 'Comfort Walking'] &&
+        data.ageGroup in ['Kids & Youth (10-17)', 'Adults (18-45)', 'Mature Comfort (46-60)', 'All Ages (10-60)'] &&
+        data.description is string && data.description.size() >= 5 && data.description.size() <= 1500 &&
+        data.price is number && data.price > 0 && data.price <= 500000 &&
+        data.discountPercent is number && data.discountPercent >= 0 && data.discountPercent <= 90 &&
+        data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 1000 &&
+        (!('driveFileId' in data) || (data.driveFileId is string && data.driveFileId.size() <= 256)) &&
+        data.colors is list && data.colors.size() >= 1 && data.colors.size() <= 10 && data.colors[0] is string &&
+        data.sizes is list && data.sizes.size() >= 1 && data.sizes.size() <= 20 && data.sizes[0] is string &&
+        data.sizeStock is map &&
+        data.stock is number && data.stock >= 0 && data.stock <= 100000 &&
+        data.lowStockThreshold is number && data.lowStockThreshold >= 0 && data.lowStockThreshold <= 1000 &&
+        data.featured is bool &&
+        data.newArrival is bool &&
+        data.bestSeller is bool &&
+        data.active is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCustomer(data) {
+      return data.keys().hasAll([
+          'uid', 'email', 'fullName', 'phone', 'address',
+          'city', 'province', 'postalCode', 'role', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'email', 'fullName', 'phone', 'address',
+          'city', 'province', 'postalCode', 'preferredAgeGroup',
+          'role', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+        data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 120 &&
+        data.phone is string && data.phone.size() <= 30 &&
+        data.address is string && data.address.size() <= 300 &&
+        data.city is string && data.city.size() <= 100 &&
+        data.province is string && data.province.size() <= 100 &&
+        data.postalCode is string && data.postalCode.size() <= 20 &&
+        (!('preferredAgeGroup' in data) || (data.preferredAgeGroup is string && data.preferredAgeGroup.size() <= 60)) &&
+        data.role == 'customer' &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+          'id', 'trackingCode', 'customerId', 'customerEmail', 'customerName',
+          'contactNumber', 'deliveryAddress', 'region', 'items', 'subtotal',
+          'shippingFee', 'totalAmount', 'paymentMethod', 'paymentReference',
+          'paymentSenderNumber', 'paymentStatus', 'orderStatus', 'stockDeducted',
+          'trackingNotes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'trackingCode', 'customerId', 'customerEmail', 'customerName',
+          'contactNumber', 'deliveryAddress', 'region', 'items', 'subtotal',
+          'shippingFee', 'totalAmount', 'paymentMethod', 'paymentReference',
+          'paymentSenderNumber', 'paymentStatus', 'orderStatus', 'stockDeducted',
+          'trackingNotes', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.trackingCode) && data.trackingCode.size() <= 40 &&
+        isValidId(data.customerId) &&
+        data.customerEmail is string && data.customerEmail.size() >= 3 && data.customerEmail.size() <= 200 &&
+        data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 120 &&
+        data.contactNumber is string && data.contactNumber.size() >= 7 && data.contactNumber.size() <= 30 &&
+        data.deliveryAddress is string && data.deliveryAddress.size() >= 5 && data.deliveryAddress.size() <= 400 &&
+        data.region is string && data.region.size() >= 2 && data.region.size() <= 80 &&
+        data.items is list && data.items.size() >= 1 && data.items.size() <= 30 && data.items[0] is map &&
+        data.subtotal is number && data.subtotal > 0 &&
+        data.shippingFee is number && data.shippingFee >= 0 &&
+        data.totalAmount is number && data.totalAmount > 0 &&
+        data.paymentMethod in ['COD', 'GCash', 'Maya'] &&
+        data.paymentReference is string && data.paymentReference.size() <= 120 &&
+        data.paymentSenderNumber is string && data.paymentSenderNumber.size() <= 30 &&
+        data.paymentStatus in ['Pending COD Collection', 'Awaiting Verification', 'Verified & Paid', 'Payment Rejected', 'Refunded'] &&
+        data.orderStatus in ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled'] &&
+        data.stockDeducted is bool &&
+        data.trackingNotes is string && data.trackingNotes.size() <= 500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidOrderTracking(data) {
+      return data.keys().hasAll([
+          'trackingCode', 'customerId', 'orderStatus', 'paymentStatus',
+          'paymentMethod', 'itemCount', 'totalAmount', 'trackingNotes',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'trackingCode', 'customerId', 'orderStatus', 'paymentStatus',
+          'paymentMethod', 'itemCount', 'totalAmount', 'trackingNotes',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.trackingCode) && data.trackingCode.size() <= 40 &&
+        isValidId(data.customerId) &&
+        data.orderStatus in ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled'] &&
+        data.paymentStatus in ['Pending COD Collection', 'Awaiting Verification', 'Verified & Paid', 'Payment Rejected', 'Refunded'] &&
+        data.paymentMethod in ['COD', 'GCash', 'Maya'] &&
+        data.itemCount is number && data.itemCount >= 1 &&
+        data.totalAmount is number && data.totalAmount > 0 &&
+        data.trackingNotes is string && data.trackingNotes.size() <= 500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Products Catalog
+    match /products/{productId} {
+      allow get: if isValidId(productId);
+      allow list: if true;
+      allow create: if isAdmin() &&
+        isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().id == productId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'brand', 'category', 'ageGroup', 'description',
+          'price', 'discountPercent', 'imageUrl', 'driveFileId', 'colors',
+          'sizes', 'sizeStock', 'stock', 'lowStockThreshold', 'featured',
+          'newArrival', 'bestSeller', 'active', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(productId);
+    }
+
+    // Customer Profiles (PII Isolated)
+    match /customers/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerified() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidCustomer(incoming()) &&
+        incoming().uid == userId &&
+        incoming().role == 'customer' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerified() &&
+        isValidId(userId) &&
+        isValidCustomer(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().role == existing().role &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (isOwner(userId) || isAdmin()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'email', 'fullName', 'phone', 'address', 'city',
+          'province', 'postalCode', 'preferredAgeGroup', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // Admin Directory
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() &&
+        isValidId(userId) &&
+        isValidAdminUser(incoming()) &&
+        incoming().uid == userId &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // Orders (PII Protected + Terminal State Locking)
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && isSignedIn() && (isAdmin() || existing().customerId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || existing().customerId == request.auth.uid);
+      allow create: if isVerified() &&
+        isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().id == orderId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().orderStatus == 'Pending' &&
+        incoming().stockDeducted == false &&
+        (
+          (incoming().paymentMethod == 'COD' && incoming().paymentStatus == 'Pending COD Collection') ||
+          ((incoming().paymentMethod == 'GCash' || incoming().paymentMethod == 'Maya') && incoming().paymentStatus == 'Awaiting Verification')
+        ) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerified() &&
+        isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().trackingCode == existing().trackingCode &&
+        incoming().customerId == existing().customerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly([
+            'orderStatus', 'paymentStatus', 'paymentReference',
+            'paymentSenderNumber', 'stockDeducted', 'trackingNotes', 'updatedAt'
+          ])) ||
+          (isOwner(existing().customerId) && existing().orderStatus == 'Pending' && (
+            (incoming().diff(existing()).affectedKeys().hasOnly(['paymentReference', 'paymentSenderNumber', 'updatedAt'])) ||
+            (incoming().orderStatus == 'Cancelled' && incoming().diff(existing()).affectedKeys().hasOnly(['orderStatus', 'trackingNotes', 'updatedAt']))
+          ))
+        );
+      allow delete: if false;
+    }
+
+    // Non-PII Order Tracking Lookup
+    match /orderTracking/{trackingCode} {
+      allow get: if isValidId(trackingCode);
+      allow list: if false;
+      allow create: if isVerified() &&
+        isValidId(trackingCode) &&
+        isValidOrderTracking(incoming()) &&
+        incoming().trackingCode == trackingCode &&
+        incoming().customerId == request.auth.uid &&
+        incoming().orderStatus == 'Pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerified() &&
+        isValidId(trackingCode) &&
+        isValidOrderTracking(incoming()) &&
+        incoming().trackingCode == existing().trackingCode &&
+        incoming().customerId == existing().customerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly([
+            'orderStatus', 'paymentStatus', 'trackingNotes', 'updatedAt'
+          ])) ||
+          (isOwner(existing().customerId) && existing().orderStatus == 'Pending' &&
+            incoming().orderStatus == 'Cancelled' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['orderStatus', 'trackingNotes', 'updatedAt'])
+          )
+        );
+      allow delete: if false;
+    }
+  }
+}

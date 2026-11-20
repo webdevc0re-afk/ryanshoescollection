@@ -1,0 +1,6 @@
+{
+  "name": "RYAN'S SHOES COLLECTION",
+  "description": "Modern footwear e-commerce store and inventory management system for RYAN'S SHOES COLLECTION serving ages 10 to 60 in the Philippines with COD, GCash, and Maya.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
